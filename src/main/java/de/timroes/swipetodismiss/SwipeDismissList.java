@@ -596,37 +596,14 @@ public final class SwipeDismissList implements View.OnTouchListener {
 					// No active animations, process all pending dismisses.
 
 					for(PendingDismissData dismiss : mPendingDismisses) {
-						if(mMode == UndoMode.SINGLE_UNDO) {
-							for(Undoable undoable : mUndoActions) {
-								undoable.discard();
-							}
-							mUndoActions.clear();
-						}
-						Undoable undoable = mCallback.onDismiss(mListView, dismiss.position);
-						if(undoable != null) {
-							mUndoActions.add(undoable);
-						}
+                        Undoable undoable = mCallback.onDismiss(mListView, dismiss.position);
+                        queueUndoAction(undoable);
 						mDelayedMsgId++;
 					}
 
-					if(!mUndoActions.isEmpty()) {
-						changePopupText();
-						changeButtonLabel();
+                    showUndoPopup();
 
-						// Show undo popup
-						mUndoPopup.showAtLocation(mListView, 
-							Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM,
-							0, (int)(mDensity * 15));
-						
-						// Queue the dismiss only if required
-						if(!mTouchBeforeAutoHide) {	
-							// Send a delayed message to hide popup
-							mHandler.sendMessageDelayed(mHandler.obtainMessage(mDelayedMsgId), 
-								mAutoHideDelay);
-						}
-					}
-
-					ViewGroup.LayoutParams lp;
+                    ViewGroup.LayoutParams lp;
 					for (PendingDismissData pendingDismiss : mPendingDismisses) {
 						// Reset view presentation
 						setAlpha(pendingDismiss.view, 1f);
@@ -652,6 +629,40 @@ public final class SwipeDismissList implements View.OnTouchListener {
 		mPendingDismisses.add(new PendingDismissData(dismissPosition, dismissView));
 		animator.start();
 	}
+
+    public void showUndoPopup() {
+        if(!mUndoActions.isEmpty()) {
+            changePopupText();
+            changeButtonLabel();
+
+            // Show undo popup
+            mUndoPopup.showAtLocation(mListView,
+                Gravity.CENTER_HORIZONTAL | Gravity.BOTTOM,
+                0, (int)(mDensity * 15));
+
+            // Queue the dismiss only if required
+            if(!mTouchBeforeAutoHide) {
+                // Send a delayed message to hide popup
+                mHandler.sendMessageDelayed(mHandler.obtainMessage(mDelayedMsgId),
+                    mAutoHideDelay);
+            }
+        }
+    }
+
+    public void queueUndoAction(Undoable undoable) {
+        if(mMode == UndoMode.SINGLE_UNDO) {
+            for(Undoable u : mUndoActions) {
+                u.discard();
+            }
+            mUndoActions.clear();
+        }
+
+        if(undoable != null) {
+            mUndoActions.add(undoable);
+        }
+    }
+
+
 
 	/**
 	 * Changes text in the popup depending on stored undos.
